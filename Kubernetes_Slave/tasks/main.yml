@@ -1,0 +1,110 @@
+---
+# tasks file for Kubernetes_Slave
+
+  - name: Creating Security Group for Using while Launching EC2 Instance
+    amazon.aws.ec2_group:
+      name: Kubernetes-SG
+      description: Security Group for allowing port for SSH & HTTP Protocol
+      region: "ap-south-1"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      rules:
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        cidr_ip: 0.0.0.0/0
+      - proto: all
+        from_port: 80
+        to_port: 80
+        cidr_ip: 0.0.0.0/0
+      rules_egress:
+      - proto: all
+        cidr_ip: 0.0.0.0/0
+    vars:
+      ansible_python_interpreter: /bin/python3
+
+  - name: Launching EC2 Instance
+    amazon.aws.ec2_instance:
+      region: "ap-south-1"
+      image_id: "{{ image_id }}" 
+      instance_type: "t2.micro"
+      vpc_subnet_id: "{{ vpc_subnet_id }}"
+      security_group: "{{ security_group }}"
+      key_name: rhel8new 
+      name: "K8S Slave 1"      
+      state: started
+      wait: yes
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+    vars:
+      ansible_python_interpreter: /bin/python3
+    register: ec2
+
+  - name: Add new launched instance to host group to Install Docker
+    add_host:
+      name: "{{ item.public_ip_address }}"
+      group: "Slave"
+    loop: "{{ ec2.instances }}"
+
+  - name: Staring SSH Protocol for Connectivity with EC2 Instance
+    wait_for:
+      host: "{{ item.public_dns_name }}"
+      port: 22
+      state: started
+    loop: "{{ ec2.instances }}"
+
+- hosts: Slave
+  name: Configure The Instance to Setup Kubernetes. 
+  tasks:
+  - name: Add kubeadm repositories on Master Node
+    yum_repository:
+      name: Kubernetes
+      description: Kubernetes repository
+      baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-$basearch
+      enabled: 1
+      gpgcheck: 1
+      gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+
+  - name: Installing Docker & kubeadm on Master Node
+    package:
+      name: "{{ item }}"
+      state: present
+    loop:
+    - docker
+    - kubeadm
+    - iproute-tc
+
+  - name: Staring & enabling Docker & kubelet on Master Node
+    service:
+      name: "{{ item }}"
+      state: started
+      enabled: yes
+    loop: 
+    - docker
+    - kubelet
+
+  - name: Pulling the images of k8s master
+    command: kubeadm config images pull
+
+  - name: Updating Docker cgroup on Master Node
+    copy:
+      dest: /etc/docker/daemon.json
+      content: |
+        {
+          "exec-opts": ["native.cgroupdriver=systemd"]
+        }
+  - name: Restart docker on Master Node
+    service:
+      name: docker
+      state: restarted
+
+  - name: Updating IP tables on Slave Node
+    copy:
+      dest: /etc/sysctl.d/k8s.conf
+      content: |
+        net.bridge.bridge-nf-call-ip6tables = 1
+        net.bridge.bridge-nf-call-iptables = 1
+
+  - name: Reloading sysctl on Slave Node
+    command: sysctl --system
+

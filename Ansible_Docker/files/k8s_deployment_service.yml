@@ -1,0 +1,34 @@
+- hosts: all
+  name: Create New K8S Deployment & Service.
+  tasks:
+
+  - name: Create Delete Service
+    shell: kubectl delete -f /home/ec2-user/service.yml
+    ignore_errors: yes  
+
+  - name: Pause for 5 seconds 
+    pause:
+      seconds: 4
+
+  - name: Create Delete Deployment 
+    shell: kubectl delete -f /home/ec2-user/deployment.yml
+    ignore_errors: yes
+  
+  - name: Pause for 5 seconds 
+    pause:
+      seconds: 4
+
+  - name: Create New Service
+    shell: kubectl apply -f /home/ec2-user/service.yml  
+
+  - name: Pause for 5 seconds 
+    pause:
+      seconds: 4
+
+  - name: Create New Deployment
+    shell: kubectl apply -f /home/ec2-user/deployment.yml
+
+  - name: Pause for 5 seconds 
+    pause:
+      seconds: 4
+

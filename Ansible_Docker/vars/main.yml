@@ -1,0 +1,8 @@
+---
+# vars file for Ansible_Docker
+
+aws_access_key: AKIA2KILMGO4I56QAEOE
+aws_secret_key: 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
+image_id: "ami-0a3277ffce9146b74"
+security_group: Ansible-SG
+vpc_subnet_id: "subnet-0549bad06abbc5d27"

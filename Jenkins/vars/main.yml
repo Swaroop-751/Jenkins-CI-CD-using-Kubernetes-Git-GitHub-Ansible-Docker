@@ -1,0 +1,9 @@
+---
+# vars file for Jenkins
+
+aws_access_key: AKIA2KILMGO4I56QAEOE
+aws_secret_key: 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
+security_group: Jenkins-Group-1
+key_name: rhel8new 
+cidr_ip: 61.2.154.190/32
+image_id: "ami-0a3277ffce9146b74"

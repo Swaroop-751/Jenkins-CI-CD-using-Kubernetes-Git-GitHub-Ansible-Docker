@@ -1,0 +1,8 @@
+---
+# vars file for Kubernetes_Master
+
+image_id: "ami-0bcf5425cdc1d8a85" 
+vpc_subnet_id: "subnet-0549bad06abbc5d27"
+security_group: Kubernetes-SG
+aws_access_key: AKIA2KILMGO4I56QAEOE
+aws_secret_key: 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

@@ -1,0 +1,1 @@
+https://swaroop751.medium.com/jenkins-ci-cd-using-kubernetes-git-github-ansible-docker-in-depth-ae12d6e07104

@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webcontainer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: webcontainer
+  template:
+    metadata:
+      labels:
+        app: webcontainer
+    spec:
+      containers:
+      - name: webcontainer
+        image: swar2001/cloudproject   
+        ports:
+        - containerPort: 80

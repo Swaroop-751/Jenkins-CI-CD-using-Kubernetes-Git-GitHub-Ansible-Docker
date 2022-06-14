@@ -1,0 +1,136 @@
+---
+# tasks file for Ansible_Docker
+
+  - name: Creating Security Group for Using while Launching EC2 Instance
+    amazon.aws.ec2_group:
+      name: "{{ security_group }}"
+      description: Security Group for allowing port for SSH & HTTP Protocol
+      region: "ap-south-1"
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      rules:
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        cidr_ip: 0.0.0.0/0
+      - proto: all
+        from_port: 80
+        to_port: 80
+        cidr_ip: 0.0.0.0/0
+      rules_egress:
+      - proto: all
+        cidr_ip: 0.0.0.0/0
+    vars:
+      ansible_python_interpreter: /bin/python3
+
+  - name: Launching EC2 Instance
+    amazon.aws.ec2_instance:
+      region: "ap-south-1"
+      image_id: "{{ image_id }}" 
+      instance_type: "t2.micro"
+      vpc_subnet_id: "{{ vpc_subnet_id }}"
+      security_group: "{{ security_group }}"
+      key_name: rhel8new 
+      name: "Ansible"      
+      state: started
+      wait: yes
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+    vars:
+      ansible_python_interpreter: /bin/python3
+    register: ec2
+
+  - name: Add new launched instance to host group to Install Docker
+    add_host:
+      name: "{{ item.public_ip_address }}"
+      group: "Ansible"
+    loop: "{{ ec2.instances }}"
+
+  - name: Staring SSH Protocol for Connectivity with EC2 Instance
+    wait_for:
+      host: "{{ item.public_dns_name }}"
+      port: 22
+      state: started
+    loop: "{{ ec2.instances }}"
+
+
+- hosts: Ansible
+  tasks:
+  - name: Upgrade all packages
+    yum:
+      name: '*'
+      state: latest
+
+  - name: "Install Java-openjdk11"
+    shell: "amazon-linux-extras install java-openjdk11 -y"
+
+  - name: "Install Ansible"
+    shell: "amazon-linux-extras install ansible2 -y"
+
+  - name: Installing Docker & Git on Ansible Node
+    package:
+      name: "{{ item }}"
+      state: present
+    loop:
+    - docker
+    - git
+
+  - name: Staring & enabling Docker
+    service:
+      name: "{{ item }}"
+      state: started
+      enabled: yes
+    loop: 
+    - docker
+
+  - name: Copy Kubernetes yaml File.
+    copy:
+      src: /root/AWS-K8S/k8s_deployment_service.yml
+      dest: /opt/k8s_deployment_service.yml
+
+  - name: Copy Private Key File to the Ansible Node.
+    copy:
+      src: /root/rhel8new.pem
+      dest: /opt/rhel8new.pem
+
+  - name: Change the Private Key File Permission.
+    shell: 'chmod 400 /opt/rhel8new.pem'
+
+  - name: Create Ansible Config File.
+    copy:
+      content: |
+        [defaults]
+        host_key_checking = false
+        remote_user = ec2-user
+        ask_pass = false
+        private_key_file = /opt/rhel8new.pem
+
+        [privilege_escalation]
+        become = true
+        become_method = sudo
+        become_user = root
+        become_ask_pass = false  
+      dest: /opt/ansible.cfg
+
+  - name: Add Kubernetes Ip to Host File.
+    copy:
+      content: |
+        [K8S]
+        15.206.81.168  ansible_user=ec2-user ansible_ssh_private_key=/opt/rhel8new.pem    
+      dest: /etc/ansible/hosts
+
+  - name: Create Directory for Jenkinsws
+    file:
+      path: /home/ec2-user/jenkinsws/
+      state: directory
+
+  - name: "Ping with the Kubernetes Cluster"
+    shell: 
+      chdir: /opt/
+      cmd: "ansible all -m ping"
+    register: pingtest
+
+  - name: Debug the variable 
+    debug:
+      var: pingtest
+
