@@ -1,32 +1,14 @@
-# Dockerfile for Loxury Web Page
+# Dockerfile for Flask Application
 --------------------------------
 
-FROM centos:latest
-RUN cd /etc/yum.repos.d/
-RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
-RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
-RUN yum install httpd zip -y
-ADD https://www.free-css.com/assets/files/free-css-templates/download/page258/loxury.zip /var/www/html
-WORKDIR /var/www/html
-RUN unzip loxury.zip
-RUN cp -rvf loxury/* .
-RUN rm -rf loxury loxury.zip
-EXPOSE 80
-ENTRYPOINT ["/usr/sbin/httpd", "-D", "FOREGROUND"]
 
+FROM python:3.8-slim-buster
 
-# Dockerfile for kindle Web Page
---------------------------------
+WORKDIR /python-docker
 
-FROM centos:latest
-RUN cd /etc/yum.repos.d/
-RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
-RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
-RUN yum install httpd zip -y
-ADD https://www.free-css.com/assets/files/free-css-templates/download/page247/kindle.zip /var/www/html
-WORKDIR /var/www/html
-RUN unzip kindle.zip
-RUN cp -rvf markups-kindle/* .
-RUN rm -rf __MACOSX markups-kindle kindle.zip
-ENTRYPOINT ["/usr/sbin/httpd", "-D", "FOREGROUND"]
-EXPOSE 80
+COPY requirements.txt requirements.txt
+RUN pip3 install -r requirements.txt
+
+COPY . .
+
+CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0"]
